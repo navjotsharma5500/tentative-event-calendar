@@ -51,8 +51,12 @@ export default function AdminPage() {
       localStorage.setItem('adminPassword', password)
       setAuthenticated(true)
       toast.success('Welcome, Admin!')
-    } catch {
-      toast.error('Invalid password. Try again.')
+    } catch (err) {
+      if (err.response?.status === 401) {
+        toast.error('Invalid password. Try again.')
+      } else {
+        toast.error('Admin API is not reachable. Start the backend server and try again.')
+      }
     } finally {
       setAuthLoading(false)
     }

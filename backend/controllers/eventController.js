@@ -1,19 +1,48 @@
 const Event = require('../models/Event');
-const { recalculateAllConflicts } = require('../utils/conflictDetection');
+const { doEventsOverlapOnDate, recalculateAllConflicts } = require('../utils/conflictDetection');
+
+function toLocalDateStr(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function toMinutes(timeStr) {
+  const [hours = 0, minutes = 0] = (timeStr || '00:00').split(':').map(Number);
+  return hours * 60 + minutes;
+}
 
 function getEventStatus(event) {
   const now = new Date();
-  const start = new Date(`${event.startDate}T${event.startTime}:00`);
-  const end = new Date(`${event.endDate}T${event.endTime}:00`);
+  const today = toLocalDateStr(now);
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-  if (now > end) return 'Completed';
-  if (now < start) return 'Upcoming';
-  if (now >= start && now <= end) return 'Live';
+  if (today > event.endDate) return 'Completed';
+  if (today < event.startDate) return 'Upcoming';
 
-  const today = now.toISOString().split('T')[0];
-  if (today >= event.startDate && today <= event.endDate) return 'Active';
+  const startMinutes = toMinutes(event.startTime);
+  const endMinutes = toMinutes(event.endTime);
+  if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) return 'Live';
 
-  return 'Upcoming';
+  return 'Active';
+}
+
+function addDateConflict(events, date) {
+  return events.map((ev, index) => {
+    const eventObject = ev.toObject ? ev.toObject() : ev;
+    const dateConflict = events.some((other, otherIndex) => (
+      index !== otherIndex && doEventsOverlapOnDate(ev, other, date)
+    ));
+
+    return {
+      ...eventObject,
+      conflictOverall: eventObject.conflict,
+      conflict: dateConflict,
+      dateConflict,
+      status: getEventStatus(ev),
+    };
+  });
 }
 
 async function getAllEvents(req, res) {
@@ -68,7 +97,7 @@ async function getEventsByDate(req, res) {
       endDate: { $gte: date },
     }).sort({ startTime: 1 });
 
-    const enriched = events.map((ev) => ({ ...ev.toObject(), status: getEventStatus(ev) }));
+    const enriched = addDateConflict(events, date);
     res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -95,11 +124,16 @@ async function getCalendarMonth(req, res) {
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const dayEvents = events.filter((ev) => ev.startDate <= dateStr && ev.endDate >= dateStr);
+      const hasConflict = dayEvents.some((ev, index) => (
+        dayEvents.some((other, otherIndex) => (
+          index !== otherIndex && doEventsOverlapOnDate(ev, other, dateStr)
+        ))
+      ));
 
       if (dayEvents.length > 0) {
         dateMap[dateStr] = {
           hasEvent: true,
-          hasConflict: dayEvents.some((ev) => ev.conflict),
+          hasConflict,
           count: dayEvents.length,
         };
       }

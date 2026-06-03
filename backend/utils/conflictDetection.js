@@ -1,18 +1,42 @@
-function toDateTime(dateStr, timeStr) {
-  return new Date(`${dateStr}T${timeStr}:00`);
+function normalizeVenue(venue) {
+  return (venue || '').trim().toLowerCase();
+}
+
+function toMinutes(timeStr) {
+  const [hours = 0, minutes = 0] = (timeStr || '00:00').split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+function doDateRangesOverlap(eventA, eventB) {
+  return eventA.startDate <= eventB.endDate && eventA.endDate >= eventB.startDate;
+}
+
+function doDailyTimesOverlap(eventA, eventB) {
+  const startA = toMinutes(eventA.startTime);
+  const endA = toMinutes(eventA.endTime);
+  const startB = toMinutes(eventB.startTime);
+  const endB = toMinutes(eventB.endTime);
+
+  return startA < endB && endA > startB;
 }
 
 function doEventsOverlap(eventA, eventB) {
-  if (eventA.venue.trim().toLowerCase() !== eventB.venue.trim().toLowerCase()) {
+  if (normalizeVenue(eventA.venue) !== normalizeVenue(eventB.venue)) {
     return false;
   }
 
-  const startA = toDateTime(eventA.startDate, eventA.startTime);
-  const endA = toDateTime(eventA.endDate, eventA.endTime);
-  const startB = toDateTime(eventB.startDate, eventB.startTime);
-  const endB = toDateTime(eventB.endDate, eventB.endTime);
+  return doDateRangesOverlap(eventA, eventB) && doDailyTimesOverlap(eventA, eventB);
+}
 
-  return startA < endB && endA > startB;
+function doEventsOverlapOnDate(eventA, eventB, dateStr) {
+  if (normalizeVenue(eventA.venue) !== normalizeVenue(eventB.venue)) {
+    return false;
+  }
+
+  const eventAIncludesDate = eventA.startDate <= dateStr && eventA.endDate >= dateStr;
+  const eventBIncludesDate = eventB.startDate <= dateStr && eventB.endDate >= dateStr;
+
+  return eventAIncludesDate && eventBIncludesDate && doDailyTimesOverlap(eventA, eventB);
 }
 
 function computeConflicts(events) {
@@ -58,4 +82,9 @@ async function recalculateAllConflicts(Event) {
   }
 }
 
-module.exports = { doEventsOverlap, computeConflicts, recalculateAllConflicts };
+module.exports = {
+  doEventsOverlap,
+  doEventsOverlapOnDate,
+  computeConflicts,
+  recalculateAllConflicts,
+};

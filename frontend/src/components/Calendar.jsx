@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { daysInMonth, firstDayOfMonth, monthName, toDateStr } from '../utils/dateUtils'
 import api from '../utils/api'
 
-const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export default function Calendar({ selectedDate, onSelectDate }) {
   const today = new Date()
@@ -51,23 +51,22 @@ export default function Calendar({ selectedDate, onSelectDate }) {
   for (let d = 1; d <= totalDays; d++) cells.push(d)
 
   return (
-    <div className="card p-5 select-none relative">
-      <div className="flex items-center justify-between mb-5">
-        <button onClick={prevMonth} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors">
-          <ChevronLeft size={18} />
+    <div className="bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden select-none relative h-[580px] flex flex-col">
+      <div className="bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-7 flex items-center justify-between">
+        <button onClick={prevMonth} className="p-2 rounded-lg text-red-500 hover:bg-white/15 transition-colors" aria-label="Previous month">
+          <ChevronLeft size={24} />
         </button>
         <div className="text-center">
-          <h2 className="font-display font-semibold text-slate-900 text-lg">{monthName(viewMonth)}</h2>
-          <p className="text-slate-400 text-xs">{viewYear}</p>
+          <h2 className="font-bold text-white text-2xl sm:text-3xl">{monthName(viewMonth)} {viewYear}</h2>
         </div>
-        <button onClick={nextMonth} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors">
-          <ChevronRight size={18} />
+        <button onClick={nextMonth} className="p-2 rounded-lg text-red-500 hover:bg-white/15 transition-colors" aria-label="Next month">
+          <ChevronRight size={24} />
         </button>
       </div>
 
-      <div className="grid grid-cols-7 mb-2">
+      <div className="grid grid-cols-7 px-7 sm:px-10 pt-9 pb-4">
         {WEEKDAYS.map(day => (
-          <div key={day} className="text-center text-xs font-semibold text-slate-400 py-1">{day}</div>
+          <div key={day} className="text-center text-base font-semibold text-gray-700 py-1">{day}</div>
         ))}
       </div>
 
@@ -78,10 +77,10 @@ export default function Calendar({ selectedDate, onSelectDate }) {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: direction * -20 }}
           transition={{ duration: 0.2 }}
-          className="grid grid-cols-7 gap-y-1"
+          className="grid grid-cols-7 gap-y-3 px-7 sm:px-10 pb-8 flex-1"
         >
           {cells.map((day, idx) => {
-            if (!day) return <div key={`empty-${idx}`} />
+            if (!day) return <div key={`empty-${idx}`} className="h-16" />
             const dateStr = `${viewYear}-${String(viewMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`
             const info = calendarData[dateStr]
             const isToday = dateStr === todayStr
@@ -92,24 +91,29 @@ export default function Calendar({ selectedDate, onSelectDate }) {
             return (
               <motion.button
                 key={dateStr}
-                whileHover={{ scale: 1.05 }}
+                whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onSelectDate(isSelected ? null : dateStr)}
                 className={`
-                  relative flex flex-col items-center justify-center rounded-xl py-2 mx-0.5 transition-all duration-150
+                  relative mx-auto h-16 w-16 flex flex-col items-center justify-center rounded-xl transition-all duration-150
                   ${isSelected
-                    ? 'bg-brand-600 text-white shadow-md shadow-brand-200'
+                    ? 'bg-white text-gray-900 ring-2 ring-blue-500 shadow-sm'
                     : isToday
-                    ? 'bg-brand-50 text-brand-700 font-semibold'
-                    : 'hover:bg-slate-100 text-slate-700'
+                    ? 'bg-blue-50 text-blue-700 font-semibold'
+                    : 'hover:bg-gray-50 text-gray-900'
                   }
                 `}
               >
-                <span className={`text-sm ${isToday && !isSelected ? 'font-bold' : 'font-medium'}`}>{day}</span>
+                <span className={`text-base ${isToday || isSelected ? 'font-bold' : 'font-semibold'}`}>{day}</span>
                 {hasEvent && (
-                  <span className={`absolute bottom-1 w-1.5 h-1.5 rounded-full
-                    ${isSelected ? 'bg-white/80' : hasConflict ? 'bg-red-500' : 'bg-brand-500'}`}
-                  />
+                  <span className="mt-1 flex items-center justify-center gap-1">
+                    {Array.from({ length: Math.min(info?.count || 1, 3) }).map((_, dotIndex) => (
+                      <span
+                        key={dotIndex}
+                        className={`w-1.5 h-1.5 rounded-full ${hasConflict ? 'bg-red-500' : 'bg-indigo-400'}`}
+                      />
+                    ))}
+                  </span>
                 )}
               </motion.button>
             )
@@ -118,22 +122,10 @@ export default function Calendar({ selectedDate, onSelectDate }) {
       </AnimatePresence>
 
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-2xl">
+        <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-2xl">
           <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
-
-      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100">
-        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-          <span className="w-2 h-2 rounded-full bg-brand-500 inline-block" /> Events
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-          <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Conflict
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-          <span className="w-2 h-2 rounded-full bg-brand-100 border border-brand-300 inline-block" /> Today
-        </div>
-      </div>
     </div>
   )
 }
