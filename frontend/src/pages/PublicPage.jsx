@@ -115,7 +115,7 @@ export default function PublicPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
             <CalendarWidget selectedDate={selectedDate} onSelectDate={setSelectedDate} />
 
-            <section className="bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden h-[580px] flex flex-col">
+            <section className="bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden h-[650px] flex flex-col">
               <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between gap-3 shrink-0">
                 <div>
                   <h2 className="text-xl font-bold text-gray-950">

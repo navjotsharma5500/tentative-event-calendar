@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Lock, Download, Upload, Edit2, Trash2, Plus, AlertTriangle,
   CheckCircle, X, Eye, EyeOff, Search, LogOut, ChevronLeft,
-  Calendar, MapPin, Clock, Users, FileSpreadsheet, Shield
+  Calendar, MapPin, Clock, Users, FileSpreadsheet, Shield, Settings, Palette
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -17,6 +17,21 @@ const THAPAR_LOGO = 'https://ik.imagekit.io/7khjnlfow/email-assets/thapar_logo.p
 const EMPTY_FORM = {
   society: '', event: '', startDate: '', startTime: '',
   endDate: '', endTime: '', venue: '', description: '',
+}
+
+const EMPTY_CATEGORY_FORM = {
+  name: '',
+  color: '#4CAF50',
+  description: '',
+  isActive: true,
+}
+
+const EMPTY_ASSIGNMENT_FORM = {
+  type: 'single',
+  date: '',
+  startDate: '',
+  endDate: '',
+  categoryId: '',
 }
 
 export default function AdminPage() {
@@ -38,9 +53,21 @@ export default function AdminPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [formLoading, setFormLoading] = useState(false)
   const [targetEvent, setTargetEvent] = useState(null)
+  const [colorSettingsModal, setColorSettingsModal] = useState(false)
+  const [colorTab, setColorTab] = useState('categories')
+  const [colorCategories, setColorCategories] = useState([])
+  const [dateAssignments, setDateAssignments] = useState({ single: [], ranges: [] })
+  const [categoryForm, setCategoryForm] = useState(EMPTY_CATEGORY_FORM)
+  const [assignmentForm, setAssignmentForm] = useState(EMPTY_ASSIGNMENT_FORM)
+  const [editingCategory, setEditingCategory] = useState(null)
+  const [editingAssignment, setEditingAssignment] = useState(null)
+  const [colorLoading, setColorLoading] = useState(false)
 
   useEffect(() => {
-    if (authenticated) fetchEvents()
+    if (authenticated) {
+      fetchEvents()
+      fetchColorSettings()
+    }
   }, [authenticated])
 
   async function handleLogin(e) {
@@ -77,6 +104,148 @@ export default function AdminPage() {
       toast.error('Failed to load events')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function fetchColorSettings() {
+    try {
+      const [categoriesRes, assignmentsRes] = await Promise.all([
+        api.get('/color-categories'),
+        api.get('/date-color-assignments'),
+      ])
+      setColorCategories(categoriesRes.data)
+      setDateAssignments(assignmentsRes.data)
+      setAssignmentForm(f => ({
+        ...f,
+        categoryId: f.categoryId || categoriesRes.data[0]?._id || '',
+      }))
+    } catch {
+      toast.error('Failed to load colour settings')
+    }
+  }
+
+  function openColorSettings() {
+    setColorSettingsModal(true)
+    fetchColorSettings()
+  }
+
+  function resetCategoryForm() {
+    setEditingCategory(null)
+    setCategoryForm(EMPTY_CATEGORY_FORM)
+  }
+
+  function editCategory(category) {
+    setEditingCategory(category)
+    setCategoryForm({
+      name: category.name,
+      color: category.color,
+      description: category.description,
+      isActive: category.isActive,
+    })
+  }
+
+  async function saveCategory() {
+    if (!categoryForm.name.trim() || !categoryForm.description.trim()) {
+      toast.error('Category name and description are required')
+      return
+    }
+    setColorLoading(true)
+    try {
+      if (editingCategory) {
+        await api.put(`/color-categories/${editingCategory._id}`, categoryForm)
+        toast.success('Colour category updated')
+      } else {
+        await api.post('/color-categories', categoryForm)
+        toast.success('Colour category created')
+      }
+      resetCategoryForm()
+      fetchColorSettings()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save category')
+    } finally {
+      setColorLoading(false)
+    }
+  }
+
+  async function deleteCategory(category) {
+    if (!window.confirm(`Delete "${category.name}" and its date assignments?`)) return
+    setColorLoading(true)
+    try {
+      await api.delete(`/color-categories/${category._id}`)
+      toast.success('Colour category deleted')
+      fetchColorSettings()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to delete category')
+    } finally {
+      setColorLoading(false)
+    }
+  }
+
+  function resetAssignmentForm() {
+    setEditingAssignment(null)
+    setAssignmentForm({
+      ...EMPTY_ASSIGNMENT_FORM,
+      categoryId: colorCategories[0]?._id || '',
+    })
+  }
+
+  function editAssignment(assignment, type) {
+    setEditingAssignment({ ...assignment, type })
+    setAssignmentForm({
+      type,
+      date: assignment.date || '',
+      startDate: assignment.startDate || '',
+      endDate: assignment.endDate || '',
+      categoryId: assignment.categoryId?._id || assignment.categoryId || '',
+    })
+  }
+
+  async function saveAssignment() {
+    if (!assignmentForm.categoryId) {
+      toast.error('Select a colour category')
+      return
+    }
+    if (assignmentForm.type === 'single' && !assignmentForm.date) {
+      toast.error('Select a date')
+      return
+    }
+    if (assignmentForm.type === 'range' && (!assignmentForm.startDate || !assignmentForm.endDate)) {
+      toast.error('Select start and end dates')
+      return
+    }
+    setColorLoading(true)
+    try {
+      if (editingAssignment) {
+        if (editingAssignment.type !== assignmentForm.type) {
+          await api.delete(`/date-color-assignments/${editingAssignment._id}`)
+          await api.post('/date-color-assignments', assignmentForm)
+        } else {
+          await api.put(`/date-color-assignments/${editingAssignment._id}`, assignmentForm)
+        }
+        toast.success('Date assignment updated')
+      } else {
+        await api.post('/date-color-assignments', assignmentForm)
+        toast.success('Date assignment saved')
+      }
+      resetAssignmentForm()
+      fetchColorSettings()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save assignment')
+    } finally {
+      setColorLoading(false)
+    }
+  }
+
+  async function deleteAssignment(assignment) {
+    setColorLoading(true)
+    try {
+      await api.delete(`/date-color-assignments/${assignment._id}`)
+      toast.success('Date assignment removed')
+      fetchColorSettings()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to remove assignment')
+    } finally {
+      setColorLoading(false)
     }
   }
 
@@ -306,6 +475,9 @@ export default function AdminPage() {
               <button onClick={openAdd} className="btn-primary">
                 <Plus size={15} /> Add Event
               </button>
+              <button onClick={openColorSettings} className="btn-secondary">
+                <Settings size={15} /> Colour Settings
+              </button>
             </div>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -464,6 +636,59 @@ export default function AdminPage() {
         )}
       </Modal>
 
+      <Modal
+        isOpen={colorSettingsModal}
+        onClose={() => setColorSettingsModal(false)}
+        title="Colour Settings Management"
+        size="xl"
+      >
+        <div className="p-6 space-y-5">
+          <div className="inline-flex rounded-xl bg-slate-100 p-1">
+            {[
+              { id: 'categories', label: 'Colour Legend' },
+              { id: 'assignments', label: 'Date Assignments' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setColorTab(tab.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  colorTab === tab.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {colorTab === 'categories' ? (
+            <ColorCategoryPanel
+              categories={colorCategories}
+              form={categoryForm}
+              setForm={setCategoryForm}
+              editingCategory={editingCategory}
+              onSave={saveCategory}
+              onEdit={editCategory}
+              onDelete={deleteCategory}
+              onCancel={resetCategoryForm}
+              loading={colorLoading}
+            />
+          ) : (
+            <DateAssignmentPanel
+              categories={colorCategories}
+              assignments={dateAssignments}
+              form={assignmentForm}
+              setForm={setAssignmentForm}
+              editingAssignment={editingAssignment}
+              onSave={saveAssignment}
+              onEdit={editAssignment}
+              onDelete={deleteAssignment}
+              onCancel={resetAssignmentForm}
+              loading={colorLoading}
+            />
+          )}
+        </div>
+      </Modal>
+
       {/* ── Delete Confirm Modal ── */}
       <Modal isOpen={deleteModal} onClose={() => setDeleteModal(false)} title="Delete Event" size="sm">
         <div className="p-6 space-y-4">
@@ -484,6 +709,239 @@ export default function AdminPage() {
           </div>
         </div>
       </Modal>
+    </div>
+  )
+}
+
+function ColorCategoryPanel({
+  categories,
+  form,
+  setForm,
+  editingCategory,
+  onSave,
+  onEdit,
+  onDelete,
+  onCancel,
+  loading,
+}) {
+  function update(field) {
+    return e => {
+      const value = field === 'isActive' ? e.target.checked : e.target.value
+      setForm(f => ({ ...f, [field]: value }))
+    }
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-5">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+        <div>
+          <h3 className="font-display font-bold text-slate-900">
+            {editingCategory ? 'Edit Category' : 'Create Category'}
+          </h3>
+          <p className="text-xs text-slate-500 mt-1">Define reusable calendar legend colours.</p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Category Name *</label>
+          <input className="input" value={form.name} onChange={update('name')} placeholder="Holiday" />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Colour *</label>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={form.color}
+              onChange={update('color')}
+              className="h-10 w-14 rounded-lg border border-slate-200 bg-white p-1"
+            />
+            <input className="input uppercase" value={form.color} onChange={update('color')} />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Description *</label>
+          <textarea className="input min-h-[82px] resize-none" value={form.description} onChange={update('description')} placeholder="Institute Holiday" />
+        </div>
+
+        <label className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2">
+          <span className="text-sm font-semibold text-slate-700">Active</span>
+          <input type="checkbox" checked={form.isActive} onChange={update('isActive')} className="h-4 w-4 accent-brand-600" />
+        </label>
+
+        <div className="flex gap-2">
+          <button onClick={onSave} disabled={loading} className="btn-primary flex-1 justify-center">
+            <CheckCircle size={15} /> {editingCategory ? 'Update' : 'Create'}
+          </button>
+          {editingCategory && (
+            <button onClick={onCancel} className="btn-secondary justify-center">Cancel</button>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+          <Palette size={16} className="text-brand-600" />
+          <h3 className="font-display font-bold text-slate-900">Calendar Legend</h3>
+        </div>
+        <div className="divide-y divide-slate-100 max-h-[460px] overflow-y-auto">
+          {categories.length === 0 ? (
+            <div className="p-8 text-center text-sm text-slate-500">No colour categories yet.</div>
+          ) : (
+            categories.map(category => (
+              <div key={category._id} className="p-4 flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 min-w-0">
+                  <span className="mt-1 h-4 w-4 rounded-full border border-slate-200 shrink-0" style={{ backgroundColor: category.color }} />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-slate-900">{category.name}</p>
+                      {!category.isActive && <span className="badge-completed text-[10px] py-0.5">Disabled</span>}
+                    </div>
+                    <p className="text-sm text-slate-500 mt-1">{category.description}</p>
+                    <p className="text-xs text-slate-400 mt-1">{category.color}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => onEdit(category)} className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50">
+                    <Edit2 size={15} />
+                  </button>
+                  <button onClick={() => onDelete(category)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DateAssignmentPanel({
+  categories,
+  assignments,
+  form,
+  setForm,
+  editingAssignment,
+  onSave,
+  onEdit,
+  onDelete,
+  onCancel,
+  loading,
+}) {
+  function update(field) {
+    return e => setForm(f => ({ ...f, [field]: e.target.value }))
+  }
+
+  const assignmentRows = [
+    ...(assignments.single || []).map(item => ({ ...item, assignmentType: 'single' })),
+    ...(assignments.ranges || []).map(item => ({ ...item, assignmentType: 'range' })),
+  ]
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-5">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+        <div>
+          <h3 className="font-display font-bold text-slate-900">
+            {editingAssignment ? 'Edit Assignment' : 'Assign Date Colour'}
+          </h3>
+          <p className="text-xs text-slate-500 mt-1">This colour layer is independent from event data.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 rounded-xl bg-white border border-slate-200 p-1">
+          {[
+            { id: 'single', label: 'Single Date' },
+            { id: 'range', label: 'Date Range' },
+          ].map(mode => (
+            <button
+              key={mode.id}
+              onClick={() => setForm(f => ({ ...f, type: mode.id }))}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                form.type === mode.id ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+
+        {form.type === 'single' ? (
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Select Date *</label>
+            <input type="date" className="input" value={form.date} onChange={update('date')} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Start Date *</label>
+              <input type="date" className="input" value={form.startDate} onChange={update('startDate')} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">End Date *</label>
+              <input type="date" className="input" value={form.endDate} onChange={update('endDate')} />
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Colour Category *</label>
+          <select className="input" value={form.categoryId} onChange={update('categoryId')}>
+            <option value="">Select category</option>
+            {categories.map(category => (
+              <option key={category._id} value={category._id}>{category.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex gap-2">
+          <button onClick={onSave} disabled={loading || categories.length === 0} className="btn-primary flex-1 justify-center">
+            <CheckCircle size={15} /> {editingAssignment ? 'Update' : 'Save'}
+          </button>
+          {editingAssignment && (
+            <button onClick={onCancel} className="btn-secondary justify-center">Cancel</button>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100">
+          <h3 className="font-display font-bold text-slate-900">Date Assignments</h3>
+        </div>
+        <div className="divide-y divide-slate-100 max-h-[460px] overflow-y-auto">
+          {assignmentRows.length === 0 ? (
+            <div className="p-8 text-center text-sm text-slate-500">No date colour assignments yet.</div>
+          ) : (
+            assignmentRows.map(assignment => {
+              const category = assignment.categoryId
+              return (
+                <div key={`${assignment.assignmentType}-${assignment._id}`} className="p-4 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="h-3.5 w-3.5 rounded-full border border-slate-200" style={{ backgroundColor: category?.color || '#CBD5E1' }} />
+                      <p className="font-semibold text-slate-900 truncate">{category?.name || 'Deleted category'}</p>
+                      <span className="badge-upcoming text-[10px] py-0.5">{assignment.assignmentType}</span>
+                    </div>
+                    <p className="text-sm text-slate-500 mt-1">
+                      {assignment.assignmentType === 'single'
+                        ? assignment.date
+                        : `${assignment.startDate} to ${assignment.endDate}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => onEdit(assignment, assignment.assignmentType)} className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50">
+                      <Edit2 size={15} />
+                    </button>
+                    <button onClick={() => onDelete(assignment)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
     </div>
   )
 }

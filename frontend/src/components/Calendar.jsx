@@ -11,6 +11,8 @@ export default function Calendar({ selectedDate, onSelectDate }) {
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth() + 1)
   const [calendarData, setCalendarData] = useState({})
+  const [colorMap, setColorMap] = useState({})
+  const [colorCategories, setColorCategories] = useState([])
   const [loading, setLoading] = useState(false)
   const [direction, setDirection] = useState(0)
 
@@ -21,10 +23,20 @@ export default function Calendar({ selectedDate, onSelectDate }) {
   async function fetchCalendarData() {
     setLoading(true)
     try {
-      const res = await api.get(`/events/calendar/${viewYear}/${viewMonth}`)
-      setCalendarData(res.data)
+      const lastDate = `${viewYear}-${String(viewMonth).padStart(2, '0')}-${String(daysInMonth(viewYear, viewMonth)).padStart(2, '0')}`
+      const firstDate = `${viewYear}-${String(viewMonth).padStart(2, '0')}-01`
+      const [calendarRes, colorMapRes, categoriesRes] = await Promise.all([
+        api.get(`/events/calendar/${viewYear}/${viewMonth}`),
+        api.get(`/calendar-color-map?start=${firstDate}&end=${lastDate}`),
+        api.get('/color-categories'),
+      ])
+      setCalendarData(calendarRes.data)
+      setColorMap(colorMapRes.data)
+      setColorCategories(categoriesRes.data.filter(category => category.isActive))
     } catch {
       setCalendarData({})
+      setColorMap({})
+      setColorCategories([])
     } finally {
       setLoading(false)
     }
@@ -51,7 +63,7 @@ export default function Calendar({ selectedDate, onSelectDate }) {
   for (let d = 1; d <= totalDays; d++) cells.push(d)
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden select-none relative h-[580px] flex flex-col">
+    <div className="bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden select-none relative h-[650px] flex flex-col">
       <div className="bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-7 flex items-center justify-between">
         <button onClick={prevMonth} className="p-2 rounded-lg text-red-500 hover:bg-white/15 transition-colors" aria-label="Previous month">
           <ChevronLeft size={24} />
@@ -64,7 +76,7 @@ export default function Calendar({ selectedDate, onSelectDate }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-7 px-7 sm:px-10 pt-9 pb-4">
+      <div className="grid grid-cols-7 px-7 sm:px-10 pt-7 pb-2">
         {WEEKDAYS.map(day => (
           <div key={day} className="text-center text-base font-semibold text-gray-700 py-1">{day}</div>
         ))}
@@ -77,16 +89,24 @@ export default function Calendar({ selectedDate, onSelectDate }) {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: direction * -20 }}
           transition={{ duration: 0.2 }}
-          className="grid grid-cols-7 gap-y-3 px-7 sm:px-10 pb-8 flex-1"
+          className="grid grid-cols-7 gap-y-2 px-7 sm:px-10 pb-3 shrink-0"
         >
           {cells.map((day, idx) => {
-            if (!day) return <div key={`empty-${idx}`} className="h-16" />
+            if (!day) return <div key={`empty-${idx}`} className="h-14" />
             const dateStr = `${viewYear}-${String(viewMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`
             const info = calendarData[dateStr]
             const isToday = dateStr === todayStr
             const isSelected = dateStr === selectedDate
             const hasEvent = info?.hasEvent
             const hasConflict = info?.hasConflict
+            const dateColor = colorMap[dateStr]
+            const stateClass = isSelected
+              ? `${dateColor ? '' : 'bg-white'} text-gray-900 ring-2 ring-blue-500 shadow-sm`
+              : isToday
+              ? `${dateColor ? '' : 'bg-blue-50'} text-blue-700 font-semibold`
+              : dateColor
+              ? 'text-gray-950 hover:ring-2 hover:ring-gray-300'
+              : 'hover:bg-gray-50 text-gray-900'
 
             return (
               <motion.button
@@ -94,14 +114,11 @@ export default function Calendar({ selectedDate, onSelectDate }) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onSelectDate(isSelected ? null : dateStr)}
+                style={dateColor ? { background: dateColor.color, backgroundColor: dateColor.color } : undefined}
+                title={dateColor ? `${dateColor.name}: ${dateColor.description}` : undefined}
                 className={`
-                  relative mx-auto h-16 w-16 flex flex-col items-center justify-center rounded-xl transition-all duration-150
-                  ${isSelected
-                    ? 'bg-white text-gray-900 ring-2 ring-blue-500 shadow-sm'
-                    : isToday
-                    ? 'bg-blue-50 text-blue-700 font-semibold'
-                    : 'hover:bg-gray-50 text-gray-900'
-                  }
+                  relative mx-auto h-14 w-14 flex flex-col items-center justify-center rounded-xl transition-all duration-150
+                  ${stateClass}
                 `}
               >
                 <span className={`text-base ${isToday || isSelected ? 'font-bold' : 'font-semibold'}`}>{day}</span>
@@ -124,6 +141,25 @@ export default function Calendar({ selectedDate, onSelectDate }) {
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-2xl">
           <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+
+      {colorCategories.length > 0 && (
+        <div className="px-7 sm:px-10 pb-4 shrink-0">
+          <div className="border-t border-gray-100 pt-3">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Calendar Legend</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-24 overflow-y-auto pr-1">
+              {colorCategories.map(category => (
+                <div key={category._id} className="flex items-start gap-2 min-w-0">
+                  <span className="mt-1 h-3 w-3 rounded-full border border-gray-200 shrink-0" style={{ backgroundColor: category.color }} />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-gray-900 truncate">{category.name}</p>
+                    <p className="text-[11px] text-gray-500 truncate">{category.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

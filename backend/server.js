@@ -48,9 +48,11 @@ mongoose
     // Routes should only load after MongoDB connects
     const eventRoutes = require('./routes/events');
     const adminRoutes = require('./routes/admin');
+    const colorRoutes = require('./routes/colors');
 
     app.use('/api/events', eventRoutes);
     app.use('/api/admin', adminRoutes);
+    app.use('/api', colorRoutes);
 
     app.get('/api/health', (req, res) => {
       res.json({
