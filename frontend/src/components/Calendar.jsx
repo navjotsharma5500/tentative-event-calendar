@@ -6,6 +6,20 @@ import api from '../utils/api'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+function getDateColors(dateColorValue) {
+  if (!dateColorValue) return []
+  return Array.isArray(dateColorValue) ? dateColorValue.filter(Boolean) : [dateColorValue]
+}
+
+function getContrastTextColor(hex) {
+  const value = String(hex || '').replace('#', '')
+  if (!/^[0-9a-f]{6}$/i.test(value)) return '#111827'
+  const r = parseInt(value.slice(0, 2), 16)
+  const g = parseInt(value.slice(2, 4), 16)
+  const b = parseInt(value.slice(4, 6), 16)
+  return (r * 299 + g * 587 + b * 114) / 1000 >= 150 ? '#111827' : '#FFFFFF'
+}
+
 export default function Calendar({ selectedDate, onSelectDate }) {
   const today = new Date()
   const [viewYear, setViewYear] = useState(today.getFullYear())
@@ -99,14 +113,20 @@ export default function Calendar({ selectedDate, onSelectDate }) {
             const isSelected = dateStr === selectedDate
             const hasEvent = info?.hasEvent
             const hasConflict = info?.hasConflict
-            const dateColor = colorMap[dateStr]
+            const dateColors = getDateColors(colorMap[dateStr])
+            const boxColor = dateColors[0]
+            const circleColor = dateColors[1]
+            const hasDateColor = Boolean(boxColor)
             const stateClass = isSelected
-              ? `${dateColor ? '' : 'bg-white'} text-gray-900 ring-2 ring-blue-500 shadow-sm`
+              ? `${hasDateColor ? '' : 'bg-white'} text-gray-900 ring-2 ring-blue-500 shadow-sm`
               : isToday
-              ? `${dateColor ? '' : 'bg-blue-50'} text-blue-700 font-semibold`
-              : dateColor
+              ? `${hasDateColor ? '' : 'bg-blue-50'} text-blue-700 font-semibold`
+              : hasDateColor
               ? 'text-gray-950 hover:ring-2 hover:ring-gray-300'
               : 'hover:bg-gray-50 text-gray-900'
+            const colorTitle = dateColors.length > 0
+              ? dateColors.map(color => `${color.name}${color.description ? `: ${color.description}` : ''}`).join('\n')
+              : undefined
 
             return (
               <motion.button
@@ -114,16 +134,21 @@ export default function Calendar({ selectedDate, onSelectDate }) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onSelectDate(isSelected ? null : dateStr)}
-                style={dateColor ? { background: dateColor.color, backgroundColor: dateColor.color } : undefined}
-                title={dateColor ? `${dateColor.name}: ${dateColor.description}` : undefined}
+                style={boxColor ? { background: boxColor.color, backgroundColor: boxColor.color } : undefined}
+                title={colorTitle}
                 className={`
                   relative mx-auto h-14 w-14 flex flex-col items-center justify-center rounded-xl transition-all duration-150
                   ${stateClass}
                 `}
               >
-                <span className={`text-base ${isToday || isSelected ? 'font-bold' : 'font-semibold'}`}>{day}</span>
+                <span
+                  className={`relative z-10 flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-base ${circleColor ? 'shadow-sm' : ''} ${isToday || isSelected ? 'font-bold' : 'font-semibold'}`}
+                  style={circleColor ? { backgroundColor: circleColor.color, color: getContrastTextColor(circleColor.color) } : undefined}
+                >
+                  {day}
+                </span>
                 {hasEvent && (
-                  <span className="mt-1 flex items-center justify-center gap-1">
+                  <span className="relative z-10 mt-1 flex items-center justify-center gap-1">
                     {Array.from({ length: Math.min(info?.count || 1, 3) }).map((_, dotIndex) => (
                       <span
                         key={dotIndex}

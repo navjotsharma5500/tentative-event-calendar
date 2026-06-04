@@ -30,6 +30,13 @@ function categoryPayload(category) {
   };
 }
 
+function addColorToDate(map, dateKey, category) {
+  const payload = categoryPayload(category);
+  if (!payload) return;
+  if (!map[dateKey]) map[dateKey] = [];
+  map[dateKey].push(payload);
+}
+
 async function getColorCategories(req, res) {
   try {
     const categories = await ColorCategory.find({}).sort({ name: 1 });
@@ -180,7 +187,7 @@ async function getCalendarColorMap(req, res) {
 
       while (cursor <= last) {
         const dateKey = toDateStr(cursor);
-        map[dateKey] = categoryPayload(category);
+        addColorToDate(map, dateKey, category);
         cursor = addDays(cursor, 1);
       }
     }
@@ -188,7 +195,7 @@ async function getCalendarColorMap(req, res) {
     for (const assignment of single) {
       const category = assignment.categoryId;
       if (!category?.isActive) continue;
-      map[assignment.date] = categoryPayload(category);
+      addColorToDate(map, assignment.date, category);
     }
 
     res.json(map);
