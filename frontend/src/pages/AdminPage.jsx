@@ -12,7 +12,7 @@ import Modal from '../components/Modal.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { formatDate, formatTime } from '../utils/dateUtils'
 
-const THAPAR_LOGO = 'https://ik.imagekit.io/7khjnlfow/email-assets/thapar_logo.png?updatedAt=1776888126772'
+const THAPAR_LOGO = 'https://ik.imagekit.io/7khjnlfow/email-assets/Thapar_Logo.png?updatedAt=1769371086744'
 
 const EMPTY_FORM = {
   society: '', event: '', startDate: '', startTime: '',
@@ -421,15 +421,15 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-gradient-to-r from-[#8b0000] via-[#c62828] to-[#1d4aeb] sticky top-0 z-40 shadow-lg">
+      <header className="bg-white sticky top-0 z-40 shadow-sm border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="bg-white/10 rounded-xl p-1.5">
-              <img src={THAPAR_LOGO} alt="Thapar" className="h-8 w-auto object-contain" />
+            <div className="rounded-xl p-1 bg-white">
+              <img src={THAPAR_LOGO} alt="Thapar" className="h-12 w-auto object-contain" />
             </div>
             <div>
-              <h1 className="font-display font-bold text-white text-lg">Admin Dashboard</h1>
-              <p className="text-white/60 text-xs">Tentative Event Calendar</p>
+              <h1 className="font-display font-bold text-slate-900 text-lg">Admin Dashboard</h1>
+              <p className="text-brand-600 font-semibold text-xs">Tentative Event Calendar</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -437,7 +437,7 @@ export default function AdminPage() {
               <ChevronLeft size={13} /> Public View
             </Link>
             <button onClick={handleLogout}
-              className="flex items-center gap-1.5 text-white/80 hover:text-white text-sm px-3 py-1.5 rounded-xl hover:bg-white/10 transition-colors"
+              className="flex items-center gap-1.5 text-slate-600 hover:text-red-600 text-sm font-semibold px-3 py-1.5 rounded-xl hover:bg-red-50 transition-colors"
             >
               <LogOut size={15} /> Logout
             </button>

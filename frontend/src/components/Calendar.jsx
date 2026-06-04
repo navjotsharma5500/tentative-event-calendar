@@ -65,13 +65,13 @@ export default function Calendar({ selectedDate, onSelectDate }) {
   return (
     <div className="bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden select-none relative h-[650px] flex flex-col">
       <div className="bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-7 flex items-center justify-between">
-        <button onClick={prevMonth} className="p-2 rounded-lg text-red-500 hover:bg-white/15 transition-colors" aria-label="Previous month">
+        <button onClick={prevMonth} className="p-2 rounded-lg text-white hover:bg-white/15 transition-colors" aria-label="Previous month">
           <ChevronLeft size={24} />
         </button>
         <div className="text-center">
           <h2 className="font-bold text-white text-2xl sm:text-3xl">{monthName(viewMonth)} {viewYear}</h2>
         </div>
-        <button onClick={nextMonth} className="p-2 rounded-lg text-red-500 hover:bg-white/15 transition-colors" aria-label="Next month">
+        <button onClick={nextMonth} className="p-2 rounded-lg text-white hover:bg-white/15 transition-colors" aria-label="Next month">
           <ChevronRight size={24} />
         </button>
       </div>
