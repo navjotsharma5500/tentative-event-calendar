@@ -101,9 +101,11 @@ function normalizeDate(val) {
   }
 
   const str = String(val).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
 
-  const dmy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const ymd = str.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+  if (ymd) return `${ymd[1]}-${ymd[2].padStart(2, '0')}-${ymd[3].padStart(2, '0')}`;
+
+  const dmy = str.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
   if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
 
   return null;
