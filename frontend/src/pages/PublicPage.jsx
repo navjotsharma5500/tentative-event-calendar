@@ -259,7 +259,7 @@ export default function PublicPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <p className="text-xs font-semibold text-gray-500 uppercase">Time</p>
                 <p className="mt-1 text-sm font-semibold text-gray-900">{formatTime(selectedEvent.startTime)} - {formatTime(selectedEvent.endTime)}</p>
@@ -269,11 +269,12 @@ export default function PublicPage() {
                 <p className="mt-1 text-sm font-semibold text-gray-900">{selectedEvent.venue}</p>
               </div>
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <p className="text-xs font-semibold text-gray-500 uppercase">Date</p>
-                <p className="mt-1 text-sm font-semibold text-gray-900">
-                  {formatDate(selectedEvent.startDate)}
-                  {selectedEvent.startDate !== selectedEvent.endDate && ` to ${formatDate(selectedEvent.endDate)}`}
-                </p>
+                <p className="text-xs font-semibold text-gray-500 uppercase">Start Date</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">{formatDate(selectedEvent.startDate)}</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase">End Date</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">{formatDate(selectedEvent.endDate)}</p>
               </div>
             </div>
 
