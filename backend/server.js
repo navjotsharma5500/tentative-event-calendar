@@ -49,10 +49,12 @@ mongoose
     const eventRoutes = require('./routes/events');
     const adminRoutes = require('./routes/admin');
     const colorRoutes = require('./routes/colors');
+    const dateDescriptionRoutes = require('./routes/dateDescriptions');
 
     app.use('/api/events', eventRoutes);
     app.use('/api/admin', adminRoutes);
     app.use('/api', colorRoutes);
+    app.use('/api', dateDescriptionRoutes);
 
     app.get('/api/health', (req, res) => {
       res.json({

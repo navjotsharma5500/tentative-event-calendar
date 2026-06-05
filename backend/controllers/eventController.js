@@ -47,7 +47,7 @@ function addDateConflict(events, date) {
 
 async function getAllEvents(req, res) {
   try {
-    const { search, society, venue, status, conflictOnly } = req.query;
+    const { search, society, department, venue, status, conflictOnly, startDate, endDate } = req.query;
     let query = {};
 
     if (search) {
@@ -56,8 +56,13 @@ async function getAllEvents(req, res) {
         { society: { $regex: search, $options: 'i' } },
       ];
     }
-    if (society) query.society = { $regex: society, $options: 'i' };
+    const societyFilter = society || department;
+    if (societyFilter) query.society = { $regex: societyFilter, $options: 'i' };
     if (venue) query.venue = { $regex: venue, $options: 'i' };
+    if (startDate || endDate) {
+      query.startDate = { $lte: endDate || '9999-12-31' };
+      query.endDate = { $gte: startDate || '0000-01-01' };
+    }
     if (conflictOnly === 'true') query.conflict = true;
 
     let events = await Event.find(query).sort({ startDate: 1, startTime: 1 });

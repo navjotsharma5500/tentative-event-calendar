@@ -34,6 +34,16 @@ const EMPTY_ASSIGNMENT_FORM = {
   categoryId: '',
 }
 
+const EMPTY_HOLIDAY_FORM = {
+  date: '',
+  description: '',
+}
+
+const EMPTY_TEACHING_MAPPING_FORM = {
+  nonTeachingDate: '',
+  teachingDates: [''],
+}
+
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(() => !!localStorage.getItem('adminPassword'))
   const [password, setPassword] = useState('')
@@ -62,11 +72,20 @@ export default function AdminPage() {
   const [editingCategory, setEditingCategory] = useState(null)
   const [editingAssignment, setEditingAssignment] = useState(null)
   const [colorLoading, setColorLoading] = useState(false)
+  const [dateDescriptionModal, setDateDescriptionModal] = useState(false)
+  const [dateDescriptionTab, setDateDescriptionTab] = useState('holidays')
+  const [dateDescriptions, setDateDescriptions] = useState({ holidays: [], teachingMappings: [] })
+  const [holidayForm, setHolidayForm] = useState(EMPTY_HOLIDAY_FORM)
+  const [teachingMappingForm, setTeachingMappingForm] = useState(EMPTY_TEACHING_MAPPING_FORM)
+  const [editingHoliday, setEditingHoliday] = useState(null)
+  const [editingTeachingMapping, setEditingTeachingMapping] = useState(null)
+  const [dateDescriptionLoading, setDateDescriptionLoading] = useState(false)
 
   useEffect(() => {
     if (authenticated) {
       fetchEvents()
       fetchColorSettings()
+      fetchDateDescriptions()
     }
   }, [authenticated])
 
@@ -127,6 +146,120 @@ export default function AdminPage() {
   function openColorSettings() {
     setColorSettingsModal(true)
     fetchColorSettings()
+  }
+
+  async function fetchDateDescriptions() {
+    try {
+      const res = await api.get('/date-descriptions')
+      setDateDescriptions(res.data)
+    } catch {
+      toast.error('Failed to load date descriptions')
+    }
+  }
+
+  function openDateDescriptions() {
+    setDateDescriptionModal(true)
+    fetchDateDescriptions()
+  }
+
+  function resetHolidayForm() {
+    setEditingHoliday(null)
+    setHolidayForm(EMPTY_HOLIDAY_FORM)
+  }
+
+  function editHoliday(holiday) {
+    setEditingHoliday(holiday)
+    setHolidayForm({
+      date: holiday.date,
+      description: holiday.description,
+    })
+  }
+
+  async function saveHoliday() {
+    if (!holidayForm.date || !holidayForm.description.trim()) {
+      toast.error('Date and description are required')
+      return
+    }
+    setDateDescriptionLoading(true)
+    try {
+      if (editingHoliday) {
+        await api.put(`/date-descriptions/holidays/${editingHoliday._id}`, holidayForm)
+        toast.success('Holiday updated')
+      } else {
+        await api.post('/date-descriptions/holidays', holidayForm)
+        toast.success('Holiday saved')
+      }
+      resetHolidayForm()
+      fetchDateDescriptions()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save holiday')
+    } finally {
+      setDateDescriptionLoading(false)
+    }
+  }
+
+  async function deleteHoliday(holiday) {
+    setDateDescriptionLoading(true)
+    try {
+      await api.delete(`/date-descriptions/holidays/${holiday._id}`)
+      toast.success('Holiday deleted')
+      fetchDateDescriptions()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to delete holiday')
+    } finally {
+      setDateDescriptionLoading(false)
+    }
+  }
+
+  function resetTeachingMappingForm() {
+    setEditingTeachingMapping(null)
+    setTeachingMappingForm(EMPTY_TEACHING_MAPPING_FORM)
+  }
+
+  function editTeachingMapping(mapping) {
+    setEditingTeachingMapping(mapping)
+    setTeachingMappingForm({
+      nonTeachingDate: mapping.nonTeachingDate,
+      teachingDates: mapping.teachingDates?.length ? mapping.teachingDates : [''],
+    })
+  }
+
+  async function saveTeachingMapping() {
+    const teachingDates = teachingMappingForm.teachingDates.map(date => date.trim()).filter(Boolean)
+    if (!teachingMappingForm.nonTeachingDate || teachingDates.length === 0) {
+      toast.error('Non-teaching date and at least one teaching date are required')
+      return
+    }
+    setDateDescriptionLoading(true)
+    try {
+      const payload = { nonTeachingDate: teachingMappingForm.nonTeachingDate, teachingDates }
+      if (editingTeachingMapping) {
+        await api.put(`/date-descriptions/teaching-mappings/${editingTeachingMapping._id}`, payload)
+        toast.success('Teaching mapping updated')
+      } else {
+        await api.post('/date-descriptions/teaching-mappings', payload)
+        toast.success('Teaching mapping saved')
+      }
+      resetTeachingMappingForm()
+      fetchDateDescriptions()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save teaching mapping')
+    } finally {
+      setDateDescriptionLoading(false)
+    }
+  }
+
+  async function deleteTeachingMapping(mapping) {
+    setDateDescriptionLoading(true)
+    try {
+      await api.delete(`/date-descriptions/teaching-mappings/${mapping._id}`)
+      toast.success('Teaching mapping deleted')
+      fetchDateDescriptions()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to delete teaching mapping')
+    } finally {
+      setDateDescriptionLoading(false)
+    }
   }
 
   function resetCategoryForm() {
@@ -478,6 +611,9 @@ export default function AdminPage() {
               <button onClick={openColorSettings} className="btn-secondary">
                 <Settings size={15} /> Colour Settings
               </button>
+              <button onClick={openDateDescriptions} className="btn-secondary">
+                <Calendar size={15} /> Dates Description
+              </button>
             </div>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -689,6 +825,58 @@ export default function AdminPage() {
         </div>
       </Modal>
 
+      <Modal
+        isOpen={dateDescriptionModal}
+        onClose={() => setDateDescriptionModal(false)}
+        title="Dates Description"
+        size="xl"
+      >
+        <div className="p-6 space-y-5">
+          <div className="inline-flex rounded-xl bg-slate-100 p-1">
+            {[
+              { id: 'holidays', label: 'Holiday' },
+              { id: 'teaching', label: 'Non Teaching to Teaching' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setDateDescriptionTab(tab.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  dateDescriptionTab === tab.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {dateDescriptionTab === 'holidays' ? (
+            <HolidayDescriptionPanel
+              holidays={dateDescriptions.holidays || []}
+              form={holidayForm}
+              setForm={setHolidayForm}
+              editingHoliday={editingHoliday}
+              onSave={saveHoliday}
+              onEdit={editHoliday}
+              onDelete={deleteHoliday}
+              onCancel={resetHolidayForm}
+              loading={dateDescriptionLoading}
+            />
+          ) : (
+            <TeachingMappingPanel
+              mappings={dateDescriptions.teachingMappings || []}
+              form={teachingMappingForm}
+              setForm={setTeachingMappingForm}
+              editingMapping={editingTeachingMapping}
+              onSave={saveTeachingMapping}
+              onEdit={editTeachingMapping}
+              onDelete={deleteTeachingMapping}
+              onCancel={resetTeachingMappingForm}
+              loading={dateDescriptionLoading}
+            />
+          )}
+        </div>
+      </Modal>
+
       {/* ── Delete Confirm Modal ── */}
       <Modal isOpen={deleteModal} onClose={() => setDeleteModal(false)} title="Delete Event" size="sm">
         <div className="p-6 space-y-4">
@@ -709,6 +897,174 @@ export default function AdminPage() {
           </div>
         </div>
       </Modal>
+    </div>
+  )
+}
+
+function HolidayDescriptionPanel({
+  holidays,
+  form,
+  setForm,
+  editingHoliday,
+  onSave,
+  onEdit,
+  onDelete,
+  onCancel,
+  loading,
+}) {
+  function update(field) {
+    return e => setForm(f => ({ ...f, [field]: e.target.value }))
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-5">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+        <div>
+          <h3 className="font-display font-bold text-slate-900">{editingHoliday ? 'Edit Holiday' : 'Add Holiday'}</h3>
+          <p className="text-xs text-slate-500 mt-1">This list appears under the public calendar.</p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Date *</label>
+          <input type="date" className="input" value={form.date} onChange={update('date')} />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Description *</label>
+          <input className="input" value={form.description} onChange={update('description')} placeholder="Gurupurab Diwas" />
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onSave} disabled={loading} className="btn-primary flex-1 justify-center">
+            <CheckCircle size={15} /> {editingHoliday ? 'Update' : 'Save'}
+          </button>
+          {editingHoliday && <button onClick={onCancel} className="btn-secondary justify-center">Cancel</button>}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100">
+          <h3 className="font-display font-bold text-slate-900">Holidays</h3>
+        </div>
+        <div className="divide-y divide-slate-100 max-h-[460px] overflow-y-auto">
+          {holidays.length === 0 ? (
+            <div className="p-8 text-center text-sm text-slate-500">No holidays added yet.</div>
+          ) : (
+            holidays.map(holiday => (
+              <div key={holiday._id} className="p-4 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-900">{formatDate(holiday.date)}</p>
+                  <p className="text-sm text-slate-500 mt-1">{holiday.description}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => onEdit(holiday)} className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50">
+                    <Edit2 size={15} />
+                  </button>
+                  <button onClick={() => onDelete(holiday)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TeachingMappingPanel({
+  mappings,
+  form,
+  setForm,
+  editingMapping,
+  onSave,
+  onEdit,
+  onDelete,
+  onCancel,
+  loading,
+}) {
+  function update(field) {
+    return e => setForm(f => ({ ...f, [field]: e.target.value }))
+  }
+
+  function updateTeachingDate(index, value) {
+    setForm(f => ({
+      ...f,
+      teachingDates: f.teachingDates.map((date, i) => (i === index ? value : date)),
+    }))
+  }
+
+  function addTeachingDate() {
+    setForm(f => ({ ...f, teachingDates: [...f.teachingDates, ''] }))
+  }
+
+  function removeTeachingDate(index) {
+    setForm(f => ({
+      ...f,
+      teachingDates: f.teachingDates.length > 1 ? f.teachingDates.filter((_, i) => i !== index) : [''],
+    }))
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-5">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+        <div>
+          <h3 className="font-display font-bold text-slate-900">{editingMapping ? 'Edit Mapping' : 'Add Mapping'}</h3>
+          <p className="text-xs text-slate-500 mt-1">Map one non-teaching date to one or more teaching dates.</p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Non Teaching Date *</label>
+          <input type="date" className="input" value={form.nonTeachingDate} onChange={update('nonTeachingDate')} />
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">Teaching Date *</label>
+            <button type="button" onClick={addTeachingDate} className="text-xs font-semibold text-brand-600 hover:text-brand-700">
+              + Add Date
+            </button>
+          </div>
+          {form.teachingDates.map((date, index) => (
+            <div key={index} className="grid grid-cols-[1fr_auto] gap-2">
+              <input type="date" className="input" value={date} onChange={e => updateTeachingDate(index, e.target.value)} />
+              <button type="button" onClick={() => removeTeachingDate(index)} className="btn-secondary px-3">
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onSave} disabled={loading} className="btn-primary flex-1 justify-center">
+            <CheckCircle size={15} /> {editingMapping ? 'Update' : 'Save'}
+          </button>
+          {editingMapping && <button onClick={onCancel} className="btn-secondary justify-center">Cancel</button>}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100">
+          <h3 className="font-display font-bold text-slate-900">Teaching Days in Lieu of Non-Teaching Days</h3>
+        </div>
+        <div className="divide-y divide-slate-100 max-h-[460px] overflow-y-auto">
+          {mappings.length === 0 ? (
+            <div className="p-8 text-center text-sm text-slate-500">No mappings added yet.</div>
+          ) : (
+            mappings.map(mapping => (
+              <div key={mapping._id} className="p-4 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-900">{formatDate(mapping.nonTeachingDate)}</p>
+                  <p className="text-sm text-slate-500 mt-1">{mapping.teachingDates.map(formatDate).join(', ')}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => onEdit(mapping)} className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50">
+                    <Edit2 size={15} />
+                  </button>
+                  <button onClick={() => onDelete(mapping)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   )
 }

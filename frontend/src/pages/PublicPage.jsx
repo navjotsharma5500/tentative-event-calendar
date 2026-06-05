@@ -19,16 +19,22 @@ import { formatDate, formatTime, humanDate, toDateStr } from '../utils/dateUtils
 
 const THAPAR_LOGO = 'https://ik.imagekit.io/7khjnlfow/email-assets/Thapar_Logo.png?updatedAt=1769371086744'
 
+function formatHyphenDate(dateStr) {
+  return formatDate(dateStr).replaceAll(' ', '-')
+}
+
 export default function PublicPage() {
   const [selectedDate, setSelectedDate] = useState(toDateStr(new Date()))
   const [dateEvents, setDateEvents] = useState([])
   const [loading, setLoading] = useState(false)
   const [venues, setVenues] = useState([])
   const [societies, setSocieties] = useState([])
+  const [dateDescriptions, setDateDescriptions] = useState({ holidays: [], teachingMappings: [] })
   const [search, setSearch] = useState('')
   const [filterVenue, setFilterVenue] = useState('')
-  const [filterSociety, setFilterSociety] = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
+  const [filterDepartment, setFilterDepartment] = useState('')
+  const [filterStartDate, setFilterStartDate] = useState('')
+  const [filterEndDate, setFilterEndDate] = useState('')
   const [filterConflict, setFilterConflict] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState(null)
@@ -36,23 +42,43 @@ export default function PublicPage() {
   useEffect(() => {
     api.get('/events/venues').then(r => setVenues(r.data)).catch(() => {})
     api.get('/events/societies').then(r => setSocieties(r.data)).catch(() => {})
+    api.get('/date-descriptions').then(r => setDateDescriptions(r.data)).catch(() => {})
   }, [])
 
   const fetchDateEvents = useCallback(async (date) => {
-    if (!date) {
-      setDateEvents([])
-      return
-    }
     setLoading(true)
     try {
-      const res = await api.get(`/events/by-date/${date}`)
+      const hasBookingFilters = Boolean(
+        search.trim() ||
+        filterVenue ||
+        filterDepartment ||
+        filterStartDate ||
+        filterEndDate ||
+        filterConflict
+      )
+
+      if (!hasBookingFilters && date) {
+        const res = await api.get(`/events/by-date/${date}`)
+        setDateEvents(res.data)
+        return
+      }
+
+      const params = {}
+      if (search.trim()) params.search = search.trim()
+      if (filterVenue) params.venue = filterVenue
+      if (filterDepartment) params.department = filterDepartment
+      if (filterStartDate) params.startDate = filterStartDate
+      if (filterEndDate) params.endDate = filterEndDate
+      if (filterConflict) params.conflictOnly = true
+
+      const res = await api.get('/events', { params })
       setDateEvents(res.data)
     } catch {
       setDateEvents([])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [filterConflict, filterDepartment, filterEndDate, filterStartDate, filterVenue, search])
 
   useEffect(() => {
     fetchDateEvents(selectedDate)
@@ -67,25 +93,28 @@ export default function PublicPage() {
 
   const filteredEvents = useMemo(() => {
     const searchText = search.trim().toLowerCase()
-    const societyText = filterSociety.trim().toLowerCase()
-
     return dateEvents.filter(ev => {
       if (searchText && !ev.event.toLowerCase().includes(searchText) && !ev.society.toLowerCase().includes(searchText)) return false
       if (filterVenue && ev.venue !== filterVenue) return false
-      if (societyText && !ev.society.toLowerCase().includes(societyText)) return false
-      if (filterStatus && ev.status !== filterStatus) return false
+      if (filterDepartment && ev.society !== filterDepartment) return false
       if (filterConflict && !ev.conflict) return false
       return true
     })
-  }, [dateEvents, filterConflict, filterSociety, filterStatus, filterVenue, search])
+  }, [dateEvents, filterConflict, filterDepartment, filterVenue, search])
 
-  const hasFilters = search || filterVenue || filterSociety || filterStatus || filterConflict
+  const hasFilters = search || filterVenue || filterDepartment || filterStartDate || filterEndDate || filterConflict
+  const bookingTitle = hasFilters
+    ? 'Filtered Bookings'
+    : selectedDate
+    ? `Bookings on ${humanDate(selectedDate)}`
+    : 'Select a date'
 
   function clearFilters() {
     setSearch('')
     setFilterVenue('')
-    setFilterSociety('')
-    setFilterStatus('')
+    setFilterDepartment('')
+    setFilterStartDate('')
+    setFilterEndDate('')
     setFilterConflict(false)
   }
 
@@ -119,8 +148,13 @@ export default function PublicPage() {
               <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between gap-3 shrink-0">
                 <div>
                   <h2 className="text-xl font-bold text-gray-950">
-                    {selectedDate ? `Bookings on ${humanDate(selectedDate)}` : 'Select a date'}
+                    {bookingTitle}
                   </h2>
+                  {hasFilters && (filterStartDate || filterEndDate) && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {filterStartDate ? formatDate(filterStartDate) : 'Any date'} to {filterEndDate ? formatDate(filterEndDate) : 'Any date'}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500 mt-1">{filteredEvents.length} booking{filteredEvents.length !== 1 ? 's' : ''} shown</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -149,31 +183,39 @@ export default function PublicPage() {
 
               {showFilters && (
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/80 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <label className="relative">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input className="input pl-9 rounded-lg" placeholder="Search event or society" value={search} onChange={e => setSearch(e.target.value)} />
+                  <label>
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">From Date</span>
+                    <input className="input rounded-lg" type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
+                  </label>
+                  <label>
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">To Date</span>
+                    <input className="input rounded-lg" type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
                   </label>
                   <label className="relative">
-                    <Building2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">Search</span>
+                    <Search size={14} className="absolute left-3 top-[34px] text-gray-400" />
+                    <input className="input pl-9 rounded-lg" placeholder="Event name or society name" value={search} onChange={e => setSearch(e.target.value)} />
+                  </label>
+                  <label className="relative">
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">Venue</span>
+                    <Building2 size={14} className="absolute left-3 top-[34px] text-gray-400" />
                     <select className="input pl-9 rounded-lg" value={filterVenue} onChange={e => setFilterVenue(e.target.value)}>
                       <option value="">All Venues</option>
                       {venues.map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
                   </label>
                   <label className="relative">
-                    <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input className="input pl-9 rounded-lg" placeholder="Filter by society" value={filterSociety} onChange={e => setFilterSociety(e.target.value)} />
-                  </label>
-                  <div className="grid grid-cols-[1fr_auto] gap-3">
-                    <select className="input rounded-lg" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                      <option value="">All Statuses</option>
-                      {['Live', 'Active', 'Upcoming', 'Completed'].map(status => <option key={status} value={status}>{status}</option>)}
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">Department</span>
+                    <Users size={14} className="absolute left-3 top-[34px] text-gray-400" />
+                    <select className="input pl-9 rounded-lg" value={filterDepartment} onChange={e => setFilterDepartment(e.target.value)}>
+                      <option value="">All Departments</option>
+                      {societies.map(society => <option key={society} value={society}>{society}</option>)}
                     </select>
-                    <label className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-600 cursor-pointer">
-                      <input type="checkbox" checked={filterConflict} onChange={e => setFilterConflict(e.target.checked)} className="w-4 h-4 accent-red-500" />
-                      Conflict
-                    </label>
-                  </div>
+                  </label>
+                  <label className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 text-sm font-semibold text-gray-600 cursor-pointer self-end">
+                    <input type="checkbox" checked={filterConflict} onChange={e => setFilterConflict(e.target.checked)} className="w-4 h-4 accent-red-500" />
+                    Conflicts only
+                  </label>
                 </div>
               )}
 
@@ -185,7 +227,7 @@ export default function PublicPage() {
                 ) : filteredEvents.length === 0 ? (
                   <div className="h-48 flex flex-col items-center justify-center text-center">
                     <CalendarIcon size={36} className="text-gray-300 mb-3" />
-                    <p className="font-semibold text-gray-500">{selectedDate ? 'No bookings on this day' : 'Select a date to view bookings'}</p>
+                    <p className="font-semibold text-gray-500">{hasFilters ? 'No matching bookings found' : selectedDate ? 'No bookings on this day' : 'Select a date to view bookings'}</p>
                     {hasFilters && <p className="text-sm text-gray-400 mt-1">Try changing the filters.</p>}
                   </div>
                 ) : (
@@ -237,6 +279,54 @@ export default function PublicPage() {
               </div>
             </section>
           </div>
+
+          <section className="mt-8 rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-950">Holidays</h2>
+            </div>
+            <div className="p-6 space-y-6">
+              <div>
+                {(dateDescriptions.holidays || []).length === 0 ? (
+                  <p className="text-sm text-gray-500">No holidays added.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {dateDescriptions.holidays.map(holiday => (
+                      <div key={holiday._id} className="grid grid-cols-1 sm:grid-cols-[130px_1fr] gap-1 sm:gap-4 text-sm">
+                        <p className="font-semibold text-gray-900">{formatHyphenDate(holiday.date)}</p>
+                        <p className="text-gray-700">{holiday.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-gray-100 pt-5">
+                <h3 className="text-base font-bold text-gray-950">Teaching Days in Lieu of Non-Teaching Days</h3>
+                {(dateDescriptions.teachingMappings || []).length === 0 ? (
+                  <p className="text-sm text-gray-500 mt-3">No teaching day mappings added.</p>
+                ) : (
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full min-w-[560px] text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100 text-left">
+                          <th className="py-2 pr-6 text-xs font-bold uppercase tracking-wider text-gray-500">Non-Teaching Date</th>
+                          <th className="py-2 text-xs font-bold uppercase tracking-wider text-gray-500">Teaching Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {dateDescriptions.teachingMappings.map(mapping => (
+                          <tr key={mapping._id}>
+                            <td className="py-2 pr-6 font-semibold text-gray-900 whitespace-nowrap">{formatHyphenDate(mapping.nonTeachingDate)}</td>
+                            <td className="py-2 text-gray-700">{mapping.teachingDates.map(formatHyphenDate).join(', ')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
         </div>
       </main>
 
