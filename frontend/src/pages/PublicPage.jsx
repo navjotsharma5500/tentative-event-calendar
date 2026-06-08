@@ -30,6 +30,10 @@ export default function PublicPage() {
   const [venues, setVenues] = useState([])
   const [societies, setSocieties] = useState([])
   const [dateDescriptions, setDateDescriptions] = useState({ holidays: [], teachingMappings: [] })
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const now = new Date()
+    return { year: now.getFullYear(), month: now.getMonth() + 1 }
+  })
   const [search, setSearch] = useState('')
   const [filterVenue, setFilterVenue] = useState('')
   const [filterDepartment, setFilterDepartment] = useState('')
@@ -42,7 +46,25 @@ export default function PublicPage() {
   useEffect(() => {
     api.get('/events/venues').then(r => setVenues(r.data)).catch(() => {})
     api.get('/events/societies').then(r => setSocieties(r.data)).catch(() => {})
-    api.get('/date-descriptions').then(r => setDateDescriptions(r.data)).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const start = `${visibleMonth.year}-${String(visibleMonth.month).padStart(2, '0')}-01`
+    const end = `${visibleMonth.year}-${String(visibleMonth.month).padStart(2, '0')}-${String(new Date(visibleMonth.year, visibleMonth.month, 0).getDate()).padStart(2, '0')}`
+    api.get('/date-descriptions', {
+      params: {
+        start,
+        end,
+        teachingStart: `${visibleMonth.year}-01-01`,
+        teachingEnd: `${visibleMonth.year}-12-31`,
+      },
+    }).then(r => setDateDescriptions(r.data)).catch(() => {})
+  }, [visibleMonth])
+
+  const handleMonthChange = useCallback((monthInfo) => {
+    setVisibleMonth(current => (
+      current.year === monthInfo.year && current.month === monthInfo.month ? current : monthInfo
+    ))
   }, [])
 
   const fetchDateEvents = useCallback(async (date) => {
@@ -142,7 +164,7 @@ export default function PublicPage() {
       <main className="bg-gradient-to-br from-blue-50 via-white to-purple-50 border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-            <CalendarWidget selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+            <CalendarWidget selectedDate={selectedDate} onSelectDate={setSelectedDate} onMonthChange={handleMonthChange} />
 
             <section className="bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden h-[650px] flex flex-col">
               <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between gap-3 shrink-0">
@@ -283,6 +305,9 @@ export default function PublicPage() {
           <section className="mt-8 rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-950">Holidays</h2>
+              <p className="text-xs font-semibold text-gray-500 mt-1">
+                {new Date(visibleMonth.year, visibleMonth.month - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+              </p>
             </div>
             <div className="p-6 space-y-6">
               <div>
@@ -302,6 +327,7 @@ export default function PublicPage() {
 
               <div className="border-t border-gray-100 pt-5">
                 <h3 className="text-base font-bold text-gray-950">Teaching Days in Lieu of Non-Teaching Days</h3>
+                <p className="text-xs font-semibold text-gray-500 mt-1">{visibleMonth.year}</p>
                 {(dateDescriptions.teachingMappings || []).length === 0 ? (
                   <p className="text-sm text-gray-500 mt-3">No teaching day mappings added.</p>
                 ) : (

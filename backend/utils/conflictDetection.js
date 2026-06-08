@@ -21,6 +21,10 @@ function doDailyTimesOverlap(eventA, eventB) {
 }
 
 function doEventsOverlap(eventA, eventB) {
+  if (eventA.ignoreConflict || eventB.ignoreConflict) {
+    return false;
+  }
+
   if (normalizeVenue(eventA.venue) !== normalizeVenue(eventB.venue)) {
     return false;
   }
@@ -29,6 +33,10 @@ function doEventsOverlap(eventA, eventB) {
 }
 
 function doEventsOverlapOnDate(eventA, eventB, dateStr) {
+  if (eventA.ignoreConflict || eventB.ignoreConflict) {
+    return false;
+  }
+
   if (normalizeVenue(eventA.venue) !== normalizeVenue(eventB.venue)) {
     return false;
   }

@@ -44,6 +44,13 @@ const EMPTY_TEACHING_MAPPING_FORM = {
   teachingDates: [''],
 }
 
+const EMPTY_EXPORT_FILTERS = {
+  startDate: '',
+  endDate: '',
+  venue: '',
+  society: '',
+}
+
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(() => !!localStorage.getItem('adminPassword'))
   const [password, setPassword] = useState('')
@@ -60,7 +67,9 @@ export default function AdminPage() {
   const [addModal, setAddModal] = useState(false)
   const [deleteModal, setDeleteModal] = useState(false)
   const [detailModal, setDetailModal] = useState(false)
+  const [exportModal, setExportModal] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [exportFilters, setExportFilters] = useState(EMPTY_EXPORT_FILTERS)
   const [formLoading, setFormLoading] = useState(false)
   const [targetEvent, setTargetEvent] = useState(null)
   const [colorSettingsModal, setColorSettingsModal] = useState(false)
@@ -395,6 +404,28 @@ export default function AdminPage() {
     }
   }
 
+  async function downloadEventsExcel() {
+    try {
+      const params = {}
+      if (exportFilters.startDate) params.startDate = exportFilters.startDate
+      if (exportFilters.endDate) params.endDate = exportFilters.endDate
+      if (exportFilters.venue) params.venue = exportFilters.venue
+      if (exportFilters.society) params.society = exportFilters.society
+
+      const res = await api.get('/admin/export-events', { params, responseType: 'blob' })
+      const url = URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'tentative-calendar-events.xlsx'
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('Events Excel downloaded')
+      setExportModal(false)
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to download events Excel')
+    }
+  }
+
   async function handleFileUpload(e) {
     const file = e.target.files[0]
     if (!file) return
@@ -476,12 +507,28 @@ export default function AdminPage() {
     }
   }
 
+  async function handleIgnoreConflict(ev) {
+    setFormLoading(true)
+    try {
+      await api.patch(`/events/${ev._id}/ignore-conflict`)
+      toast.success('Conflict ignored')
+      fetchEvents()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to ignore conflict')
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
   const filteredEvents = events.filter(ev =>
     !search ||
     ev.event.toLowerCase().includes(search.toLowerCase()) ||
     ev.society.toLowerCase().includes(search.toLowerCase()) ||
     ev.venue.toLowerCase().includes(search.toLowerCase())
   )
+
+  const eventVenues = [...new Set(events.map(ev => ev.venue).filter(Boolean))].sort()
+  const eventSocieties = [...new Set(events.map(ev => ev.society).filter(Boolean))].sort()
 
   // ── Auth Screen ──────────────────────────────────────────────
   if (!authenticated) {
@@ -601,6 +648,9 @@ export default function AdminPage() {
               <button onClick={downloadTemplate} className="btn-secondary">
                 <Download size={15} /> Download Template
               </button>
+              <button onClick={() => setExportModal(true)} className="btn-secondary">
+                <Download size={15} /> Download Excel
+              </button>
               <button onClick={() => fileInputRef.current?.click()} className="btn-secondary">
                 <Upload size={15} /> Import Excel
               </button>
@@ -710,6 +760,14 @@ export default function AdminPage() {
                             >
                               <Trash2 size={15} />
                             </button>
+                            {ev.conflict && (
+                              <button onClick={() => handleIgnoreConflict(ev)}
+                                className="px-2 py-1 rounded-lg text-[11px] font-semibold text-red-600 hover:bg-red-50 transition-colors whitespace-nowrap"
+                                title="Ignore Conflicts"
+                              >
+                                Ignore Conflicts
+                              </button>
+                            )}
                           </div>
                         </td>
                       </motion.tr>
@@ -737,6 +795,64 @@ export default function AdminPage() {
           loading={formLoading}
           isEdit={editModal}
         />
+      </Modal>
+
+      <Modal isOpen={exportModal} onClose={() => setExportModal(false)} title="Download Events Excel" size="md">
+        <div className="p-6 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">From Date</label>
+              <input
+                type="date"
+                className="input"
+                value={exportFilters.startDate}
+                onChange={e => setExportFilters(f => ({ ...f, startDate: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">To Date</label>
+              <input
+                type="date"
+                className="input"
+                value={exportFilters.endDate}
+                onChange={e => setExportFilters(f => ({ ...f, endDate: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Venue</label>
+              <select
+                className="input"
+                value={exportFilters.venue}
+                onChange={e => setExportFilters(f => ({ ...f, venue: e.target.value }))}
+              >
+                <option value="">All Venues</option>
+                {eventVenues.map(venue => <option key={venue} value={venue}>{venue}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Society</label>
+              <select
+                className="input"
+                value={exportFilters.society}
+                onChange={e => setExportFilters(f => ({ ...f, society: e.target.value }))}
+              >
+                <option value="">All Societies</option>
+                {eventSocieties.map(society => <option key={society} value={society}>{society}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setExportFilters(EMPTY_EXPORT_FILTERS)}
+              className="btn-secondary flex-1 justify-center"
+            >
+              Clear
+            </button>
+            <button onClick={downloadEventsExcel} className="btn-primary flex-1 justify-center">
+              <Download size={15} /> Download
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* ── Detail Modal ── */}

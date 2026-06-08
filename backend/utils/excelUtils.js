@@ -18,6 +18,43 @@ function generateTemplate() {
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 }
 
+function generateEventsExport(events) {
+  const wb = XLSX.utils.book_new();
+  const headers = [
+    'Society',
+    'Event',
+    'Start Date',
+    'Start Time',
+    'End Date',
+    'End Time',
+    'Venue',
+    'Description',
+    'Conflict',
+    'Ignore Conflicts',
+  ];
+  const rows = events.map((event) => [
+    event.society,
+    event.event,
+    event.startDate,
+    event.startTime,
+    event.endDate,
+    event.endTime,
+    event.venue,
+    event.description || '',
+    event.conflict ? 'Yes' : 'No',
+    event.ignoreConflict ? 'Yes' : 'No',
+  ]);
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws['!cols'] = [
+    { wch: 28 }, { wch: 32 }, { wch: 15 }, { wch: 12 },
+    { wch: 15 }, { wch: 12 }, { wch: 28 }, { wch: 45 },
+    { wch: 12 }, { wch: 18 },
+  ];
+  XLSX.utils.book_append_sheet(wb, ws, 'Events');
+  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+}
+
 function parseExcelFile(buffer) {
   const wb = XLSX.read(buffer, { type: 'buffer' });
   const sheetName = wb.SheetNames[0];
@@ -138,4 +175,4 @@ function normalizeTime(val) {
   return null;
 }
 
-module.exports = { generateTemplate, parseExcelFile };
+module.exports = { generateTemplate, generateEventsExport, parseExcelFile };

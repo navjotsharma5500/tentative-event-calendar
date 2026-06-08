@@ -7,9 +7,30 @@ function sanitizeTeachingDates(dates) {
 
 async function getDateDescriptions(req, res) {
   try {
+    const { start, end, teachingStart, teachingEnd } = req.query;
+    const holidayQuery = {};
+    const teachingQuery = {};
+    if (start || end) {
+      holidayQuery.date = {};
+      teachingQuery.nonTeachingDate = {};
+      if (start) {
+        holidayQuery.date.$gte = start;
+        teachingQuery.nonTeachingDate.$gte = start;
+      }
+      if (end) {
+        holidayQuery.date.$lte = end;
+        teachingQuery.nonTeachingDate.$lte = end;
+      }
+    }
+    if (teachingStart || teachingEnd) {
+      teachingQuery.nonTeachingDate = {};
+      if (teachingStart) teachingQuery.nonTeachingDate.$gte = teachingStart;
+      if (teachingEnd) teachingQuery.nonTeachingDate.$lte = teachingEnd;
+    }
+
     const [holidays, teachingMappings] = await Promise.all([
-      HolidayDescription.find({}).sort({ date: 1, createdAt: 1 }),
-      TeachingDayMapping.find({}).sort({ nonTeachingDate: 1, createdAt: 1 }),
+      HolidayDescription.find(holidayQuery).sort({ date: 1, createdAt: 1 }),
+      TeachingDayMapping.find(teachingQuery).sort({ nonTeachingDate: 1, createdAt: 1 }),
     ]);
 
     res.json({ holidays, teachingMappings });

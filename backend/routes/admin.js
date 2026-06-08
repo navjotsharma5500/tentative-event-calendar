@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { verifyPassword, downloadTemplate, uploadExcel } = require('../controllers/adminController');
+const { verifyPassword, downloadTemplate, downloadEventsExcel, uploadExcel } = require('../controllers/adminController');
 const { requireAdmin } = require('../middleware/auth');
 
 const upload = multer({
@@ -21,6 +21,7 @@ const upload = multer({
 
 router.post('/verify-password', verifyPassword);
 router.get('/template', requireAdmin, downloadTemplate);
+router.get('/export-events', requireAdmin, downloadEventsExcel);
 router.post('/upload', requireAdmin, upload.single('file'), uploadExcel);
 
 module.exports = router;

@@ -48,6 +48,10 @@ const eventSchema = new mongoose.Schema(
         ref: 'Event',
       },
     ],
+    ignoreConflict: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

@@ -188,6 +188,22 @@ async function deleteEvent(req, res) {
   }
 }
 
+async function ignoreEventConflict(req, res) {
+  try {
+    const updated = await Event.findByIdAndUpdate(
+      req.params.id,
+      { ignoreConflict: true, conflict: false, conflictWith: [] },
+      { new: true, runValidators: true }
+    );
+    if (!updated) return res.status(404).json({ error: 'Event not found' });
+    await recalculateAllConflicts(Event);
+    const fresh = await Event.findById(updated._id);
+    res.json({ ...fresh.toObject(), status: getEventStatus(fresh) });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+}
+
 async function importEvents(req, res) {
   try {
     const { events } = req.body;
@@ -204,5 +220,5 @@ async function importEvents(req, res) {
 
 module.exports = {
   getAllEvents, getVenues, getSocieties, getEventsByDate,
-  getCalendarMonth, createEvent, updateEvent, deleteEvent, importEvents,
+  getCalendarMonth, createEvent, updateEvent, deleteEvent, ignoreEventConflict, importEvents,
 };

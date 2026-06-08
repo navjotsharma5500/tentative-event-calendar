@@ -20,7 +20,7 @@ function getContrastTextColor(hex) {
   return (r * 299 + g * 587 + b * 114) / 1000 >= 150 ? '#111827' : '#FFFFFF'
 }
 
-export default function Calendar({ selectedDate, onSelectDate }) {
+export default function Calendar({ selectedDate, onSelectDate, onMonthChange }) {
   const today = new Date()
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth() + 1)
@@ -33,6 +33,10 @@ export default function Calendar({ selectedDate, onSelectDate }) {
   useEffect(() => {
     fetchCalendarData()
   }, [viewYear, viewMonth])
+
+  useEffect(() => {
+    onMonthChange?.({ year: viewYear, month: viewMonth })
+  }, [onMonthChange, viewMonth, viewYear])
 
   async function fetchCalendarData() {
     setLoading(true)
