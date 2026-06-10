@@ -24,6 +24,10 @@ const colorCategorySchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    showDescription: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

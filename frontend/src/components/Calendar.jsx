@@ -192,7 +192,9 @@ export default function Calendar({ selectedDate, onSelectDate, onMonthChange }) 
                   <span className="mt-1 h-3 w-3 rounded-full border border-gray-200 shrink-0" style={{ backgroundColor: category.color }} />
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-gray-900 truncate">{category.name}</p>
-                    <p className="text-[11px] text-gray-500 truncate">{category.description}</p>
+                    {category.showDescription !== false && (
+                      <p className="text-[11px] text-gray-500 truncate">{category.description}</p>
+                    )}
                   </div>
                 </div>
               ))}

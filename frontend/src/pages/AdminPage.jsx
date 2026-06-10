@@ -24,6 +24,7 @@ const EMPTY_CATEGORY_FORM = {
   color: '#4CAF50',
   description: '',
   isActive: true,
+  showDescription: true,
 }
 
 const EMPTY_ASSIGNMENT_FORM = {
@@ -283,6 +284,7 @@ export default function AdminPage() {
       color: category.color,
       description: category.description,
       isActive: category.isActive,
+      showDescription: category.showDescription !== false,
     })
   }
 
@@ -1198,7 +1200,7 @@ function ColorCategoryPanel({
 }) {
   function update(field) {
     return e => {
-      const value = field === 'isActive' ? e.target.checked : e.target.value
+      const value = ['isActive', 'showDescription'].includes(field) ? e.target.checked : e.target.value
       setForm(f => ({ ...f, [field]: value }))
     }
   }
@@ -1241,6 +1243,11 @@ function ColorCategoryPanel({
           <input type="checkbox" checked={form.isActive} onChange={update('isActive')} className="h-4 w-4 accent-brand-600" />
         </label>
 
+        <label className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2">
+          <span className="text-sm font-semibold text-slate-700">Show Description</span>
+          <input type="checkbox" checked={form.showDescription !== false} onChange={update('showDescription')} className="h-4 w-4 accent-brand-600" />
+        </label>
+
         <div className="flex gap-2">
           <button onClick={onSave} disabled={loading} className="btn-primary flex-1 justify-center">
             <CheckCircle size={15} /> {editingCategory ? 'Update' : 'Create'}
@@ -1268,6 +1275,7 @@ function ColorCategoryPanel({
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-slate-900">{category.name}</p>
                       {!category.isActive && <span className="badge-completed text-[10px] py-0.5">Disabled</span>}
+                      {category.showDescription === false && <span className="badge-upcoming text-[10px] py-0.5">Description Hidden</span>}
                     </div>
                     <p className="text-sm text-slate-500 mt-1">{category.description}</p>
                     <p className="text-xs text-slate-400 mt-1">{category.color}</p>

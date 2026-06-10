@@ -55,8 +55,6 @@ export default function PublicPage() {
       params: {
         start,
         end,
-        teachingStart: `${visibleMonth.year}-01-01`,
-        teachingEnd: `${visibleMonth.year}-12-31`,
       },
     }).then(r => setDateDescriptions(r.data)).catch(() => {})
   }, [visibleMonth])

@@ -27,6 +27,7 @@ function categoryPayload(category) {
     color: category.color,
     description: category.description,
     isActive: category.isActive,
+    showDescription: category.showDescription !== false,
   };
 }
 
@@ -53,6 +54,7 @@ async function createColorCategory(req, res) {
       color: normalizeHex(req.body.color),
       description: req.body.description,
       isActive: req.body.isActive !== false,
+      showDescription: req.body.showDescription !== false,
     };
     const category = new ColorCategory(payload);
     await category.save();
