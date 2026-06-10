@@ -80,6 +80,15 @@ export default function Calendar({ selectedDate, onSelectDate, onMonthChange }) 
   for (let i = 0; i < startDay; i++) cells.push(null)
   for (let d = 1; d <= totalDays; d++) cells.push(d)
 
+  const usedColorCategoryIds = new Set(
+    Object.values(colorMap).flatMap(dateColorValue => (
+      getDateColors(dateColorValue).map(color => String(color._id))
+    ))
+  )
+  const visibleColorCategories = colorCategories.filter(category => (
+    usedColorCategoryIds.has(String(category._id))
+  ))
+
   return (
     <div className="bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden select-none relative h-[650px] flex flex-col">
       <div className="bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-7 flex items-center justify-between">
@@ -173,12 +182,12 @@ export default function Calendar({ selectedDate, onSelectDate, onMonthChange }) 
         </div>
       )}
 
-      {colorCategories.length > 0 && (
+      {visibleColorCategories.length > 0 && (
         <div className="px-7 sm:px-10 pb-4 shrink-0">
           <div className="border-t border-gray-100 pt-3">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Calendar Legend</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-24 overflow-y-auto pr-1">
-              {colorCategories.map(category => (
+              {visibleColorCategories.map(category => (
                 <div key={category._id} className="flex items-start gap-2 min-w-0">
                   <span className="mt-1 h-3 w-3 rounded-full border border-gray-200 shrink-0" style={{ backgroundColor: category.color }} />
                   <div className="min-w-0">
