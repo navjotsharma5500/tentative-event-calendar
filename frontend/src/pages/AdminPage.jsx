@@ -5,12 +5,13 @@ import {
   CheckCircle, X, Eye, EyeOff, Search, LogOut, ChevronLeft,
   Calendar, MapPin, Clock, Users, FileSpreadsheet, Shield, Settings, Palette
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../utils/api'
 import Modal from '../components/Modal.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { formatDate, formatTime } from '../utils/dateUtils'
+import { clearTcAdminSession, isTcAdminAuthenticated, setTcAdminSession } from '../utils/adminAuth'
 
 const THAPAR_LOGO = 'https://ik.imagekit.io/7khjnlfow/email-assets/Thapar_Logo.png?updatedAt=1769371086744'
 
@@ -52,8 +53,9 @@ const EMPTY_EXPORT_FILTERS = {
   society: '',
 }
 
-export default function AdminPage() {
-  const [authenticated, setAuthenticated] = useState(() => !!localStorage.getItem('adminPassword'))
+export default function AdminPage({ loginOnly = false }) {
+  const navigate = useNavigate()
+  const [authenticated, setAuthenticated] = useState(() => !loginOnly && isTcAdminAuthenticated())
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [authLoading, setAuthLoading] = useState(false)
@@ -104,8 +106,9 @@ export default function AdminPage() {
     setAuthLoading(true)
     try {
       await api.post('/admin/verify-password', { password })
-      localStorage.setItem('adminPassword', password)
+      setTcAdminSession(password)
       setAuthenticated(true)
+      navigate('/admin', { replace: true })
       toast.success('Welcome, Admin!')
     } catch (err) {
       if (err.response?.status === 401) {
@@ -119,9 +122,10 @@ export default function AdminPage() {
   }
 
   function handleLogout() {
-    localStorage.removeItem('adminPassword')
+    clearTcAdminSession()
     setAuthenticated(false)
     setPassword('')
+    navigate('/admin/login', { replace: true })
   }
 
   async function fetchEvents() {
