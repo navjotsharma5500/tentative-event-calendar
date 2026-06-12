@@ -24,6 +24,10 @@ function formatHyphenDate(dateStr) {
   return formatDate(dateStr).replaceAll(' ', '-')
 }
 
+function normalizeFilterText(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
 export default function PublicPage() {
   const [selectedDate, setSelectedDate] = useState(toDateStr(new Date()))
   const [dateEvents, setDateEvents] = useState([])
@@ -114,10 +118,12 @@ export default function PublicPage() {
 
   const filteredEvents = useMemo(() => {
     const searchText = search.trim().toLowerCase()
+    const venueText = normalizeFilterText(filterVenue)
+    const departmentText = normalizeFilterText(filterDepartment)
     return dateEvents.filter(ev => {
       if (searchText && !ev.event.toLowerCase().includes(searchText) && !ev.society.toLowerCase().includes(searchText)) return false
-      if (filterVenue && ev.venue !== filterVenue) return false
-      if (filterDepartment && ev.society !== filterDepartment) return false
+      if (venueText && normalizeFilterText(ev.venue) !== venueText) return false
+      if (departmentText && normalizeFilterText(ev.society) !== departmentText) return false
       if (filterConflict && !ev.conflict) return false
       return true
     })

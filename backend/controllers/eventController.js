@@ -13,6 +13,10 @@ function toMinutes(timeStr) {
   return hours * 60 + minutes;
 }
 
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function getEventStatus(event) {
   const now = new Date();
   const today = toLocalDateStr(now);
@@ -57,8 +61,8 @@ async function getAllEvents(req, res) {
       ];
     }
     const societyFilter = society || department;
-    if (societyFilter) query.society = { $regex: societyFilter, $options: 'i' };
-    if (venue) query.venue = { $regex: venue, $options: 'i' };
+    if (societyFilter) query.society = { $regex: escapeRegex(societyFilter), $options: 'i' };
+    if (venue) query.venue = { $regex: escapeRegex(venue), $options: 'i' };
     if (startDate || endDate) {
       query.startDate = { $lte: endDate || '9999-12-31' };
       query.endDate = { $gte: startDate || '0000-01-01' };
