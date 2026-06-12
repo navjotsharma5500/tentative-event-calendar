@@ -5,6 +5,7 @@ import {
   Building2,
   Calendar as CalendarIcon,
   Clock,
+  ArrowLeft,
   Filter,
   MapPin,
   Search,
@@ -155,7 +156,13 @@ export default function PublicPage() {
             <h1 className="text-2xl font-bold tracking-normal">Thapar Event Calendar</h1>
           </div>
 
-          <div className="w-[220px] hidden xl:block" />
+          <a
+            href="https://campusconnect.thapar.edu/event-calendar"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 sm:px-4"
+          >
+            <ArrowLeft size={16} className="shrink-0" />
+            <span>Back</span>
+          </a>
         </div>
       </header>
 
