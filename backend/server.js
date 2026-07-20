@@ -50,11 +50,13 @@ mongoose
     const adminRoutes = require('./routes/admin');
     const colorRoutes = require('./routes/colors');
     const dateDescriptionRoutes = require('./routes/dateDescriptions');
+    const integrationRoutes = require('./routes/integration');
 
     app.use('/api/events', eventRoutes);
     app.use('/api/admin', adminRoutes);
     app.use('/api', colorRoutes);
     app.use('/api', dateDescriptionRoutes);
+    app.use('/api/integration', integrationRoutes);
 
     app.get('/api/health', (req, res) => {
       res.json({
