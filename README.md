@@ -253,6 +253,12 @@ And redeploy the backend.
 | GET    | `/api/events/venues`           | Get all distinct venues        |
 | GET    | `/api/events/societies`        | Get all distinct societies     |
 
+> **Production access:** Public `GET /tc-api/api/events` requests and all of
+> its subpaths are disabled at Nginx with HTTP 403. Campus Connect continues
+> to read calendar data over loopback from `/api/integration/*`, authenticated
+> by `x-calendar-api-key`. See
+> [`deploy/nginx/tentative-calendar-api.conf`](deploy/nginx/tentative-calendar-api.conf).
+
 ### Admin (requires `x-admin-password` header)
 
 | Method | Endpoint                | Description             |
