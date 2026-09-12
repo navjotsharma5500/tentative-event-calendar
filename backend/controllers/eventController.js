@@ -1,35 +1,9 @@
 const Event = require('../models/Event');
 const { doEventsOverlapOnDate, recalculateAllConflicts } = require('../utils/conflictDetection');
-
-function toLocalDateStr(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function toMinutes(timeStr) {
-  const [hours = 0, minutes = 0] = (timeStr || '00:00').split(':').map(Number);
-  return hours * 60 + minutes;
-}
+const { getEventStatus } = require('../utils/eventStatus');
 
 function escapeRegex(value) {
   return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function getEventStatus(event) {
-  const now = new Date();
-  const today = toLocalDateStr(now);
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-  if (today > event.endDate) return 'Completed';
-  if (today < event.startDate) return 'Upcoming';
-
-  const startMinutes = toMinutes(event.startTime);
-  const endMinutes = toMinutes(event.endTime);
-  if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) return 'Live';
-
-  return 'Active';
 }
 
 function addDateConflict(events, date) {

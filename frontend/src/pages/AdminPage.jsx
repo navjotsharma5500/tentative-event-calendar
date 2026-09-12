@@ -11,6 +11,7 @@ import api from '../utils/api'
 import Modal from '../components/Modal.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { formatDate, formatTime } from '../utils/dateUtils'
+import { getEventStatus } from '../utils/eventStatus'
 import { clearTcAdminSession, isTcAdminAuthenticated, setTcAdminSession } from '../utils/adminAuth'
 
 const THAPAR_LOGO = 'https://ik.imagekit.io/7khjnlfow/email-assets/Thapar_Logo.png?updatedAt=1769371086744'
@@ -63,7 +64,13 @@ export default function AdminPage({ loginOnly = false }) {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
+  const [now, setNow] = useState(() => new Date())
   const fileInputRef = useRef()
+
+  useEffect(() => {
+    const ticker = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(ticker)
+  }, [])
 
   // Modals
   const [editModal, setEditModal] = useState(false)
@@ -637,8 +644,8 @@ export default function AdminPage({ loginOnly = false }) {
           {[
             { label: 'Total Events', value: events.length, color: 'text-brand-600', bg: 'bg-brand-50' },
             { label: 'Conflicts', value: events.filter(e => e.conflict).length, color: 'text-red-500', bg: 'bg-red-50' },
-            { label: 'Upcoming', value: events.filter(e => e.status === 'Upcoming').length, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: 'Live Now', value: events.filter(e => e.status === 'Live').length, color: 'text-green-600', bg: 'bg-green-50' },
+            { label: 'Upcoming', value: events.filter(e => getEventStatus(e, now) === 'Upcoming').length, color: 'text-blue-600', bg: 'bg-blue-50' },
+            { label: 'Live Now', value: events.filter(e => getEventStatus(e, now) === 'Live').length, color: 'text-green-600', bg: 'bg-green-50' },
           ].map(s => (
             <div key={s.label} className={`card p-4 ${s.bg}`}>
               <p className={`text-3xl font-display font-bold ${s.color}`}>{s.value}</p>
@@ -742,7 +749,7 @@ export default function AdminPage({ loginOnly = false }) {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1">
-                            <StatusBadge status={ev.status} />
+                            <StatusBadge status={getEventStatus(ev, now)} />
                             {ev.conflict && <span className="badge-conflict text-[10px] py-0.5"><AlertTriangle size={8} />Conflict</span>}
                           </div>
                         </td>
@@ -866,7 +873,7 @@ export default function AdminPage({ loginOnly = false }) {
         {targetEvent && (
           <div className="p-6 space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
-              <StatusBadge status={targetEvent.status} />
+              <StatusBadge status={getEventStatus(targetEvent, now)} />
               {targetEvent.conflict && <span className="badge-conflict"><AlertTriangle size={10} />Conflict</span>}
             </div>
             <h2 className="font-display font-bold text-slate-900 text-2xl">{targetEvent.event}</h2>

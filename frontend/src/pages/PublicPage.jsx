@@ -17,6 +17,7 @@ import CalendarWidget from '../components/Calendar.jsx'
 import Modal from '../components/Modal.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { formatDate, formatTime, humanDate, toDateStr } from '../utils/dateUtils'
+import { getEventStatus } from '../utils/eventStatus'
 
 const THAPAR_LOGO = 'https://ik.imagekit.io/7khjnlfow/email-assets/Thapar_Logo.png?updatedAt=1769371086744'
 
@@ -47,6 +48,12 @@ export default function PublicPage() {
   const [filterConflict, setFilterConflict] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState(null)
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    const ticker = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(ticker)
+  }, [])
 
   useEffect(() => {
     api.get('/events/venues').then(r => setVenues(r.data)).catch(() => {})
@@ -302,7 +309,7 @@ export default function PublicPage() {
                         </div>
                         <div className="justify-self-start min-[1180px]:justify-self-end max-w-full overflow-hidden">
                           <span className="inline-flex max-w-full [&>span]:max-w-full [&>span]:truncate [&>span]:px-2 [&>span]:py-0.5 [&>span]:text-[11px]">
-                            <StatusBadge status={ev.status} />
+                            <StatusBadge status={getEventStatus(ev, now)} />
                           </span>
                         </div>
                       </div>
@@ -378,7 +385,7 @@ export default function PublicPage() {
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-2">
-                  <StatusBadge status={selectedEvent.status} />
+                  <StatusBadge status={getEventStatus(selectedEvent, now)} />
                   {selectedEvent.conflict && <span className="badge-conflict rounded-lg"><AlertTriangle size={10} /> Conflict</span>}
                 </div>
                 <h3 className="text-2xl font-bold text-gray-950 leading-tight">{selectedEvent.event}</h3>
